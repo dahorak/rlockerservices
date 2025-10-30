@@ -16,6 +16,7 @@ rlocker = ResourceLockerConnection()
 
 class QueueService(ServiceBase):
     def __init__(self):
+        print("## get_queues STATUS_INITIALIZING ###############################################")
         self.initializing_queues = rlocker.get_queues(status=const.STATUS_INITIALIZING)
         # We should fill this right after we checked what queues are not put in status pending
         self.pending_queues = None
@@ -25,12 +26,16 @@ class QueueService(ServiceBase):
         Actions to run when the service gets initialized
         :return None:
         """
+        print("## put_queues_on_pending ###############################################")
         self.put_queues_on_pending()
+        print("## get_queues STATUS_PENDING ###############################################")
         self.pending_queues = rlocker.get_queues(status=const.STATUS_PENDING)
+        print("## instantiate_pending_queue_objects ###############################################")
         self.instantiate_pending_queue_objects()
         Rqueue.group_all()
         pp.pprint(Rqueue.grouped_queues)
         for group in Rqueue.grouped_queues:
+            print(f"## group: {group} ###############################################")
             if group.get("group_type") == "label":
                 resources = rlocker.get_lockable_resources(
                     free_only=True, label_matches=group.get("group_name")
@@ -41,6 +46,17 @@ class QueueService(ServiceBase):
                 )
             else:
                 raise Exception("Group type should be either name or label!")
+
+            if isinstance(resources, list):
+                print(f"resources: {resources}")
+            else:
+                print("==========================================================================")
+                print(f"resources: {resources}")
+                print(f"url: {resources.url}")
+                print(f"reason: {resources.reason}")
+                print(f"status_code: {resources.status_code}")
+                print(f"text: {resources.text}")
+                print(f"headers: {resources.headers}")
 
             if resources:
                 # Prepare by waiting for the next beat by the client
@@ -91,6 +107,7 @@ class QueueService(ServiceBase):
             if not is_queue_changed:
                 print(
                     f"There was a problem changing queue with ID {queue_id} to {const.STATUS_PENDING}! \n"
+                    f"{queue_response.json()}\n"
                     f"Unrecoverable error. Service Exiting..."
                 )
                 sys.exit()
